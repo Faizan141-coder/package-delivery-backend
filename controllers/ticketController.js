@@ -1,4 +1,5 @@
 const Ticket = require("../models/ticketModel");
+const ActiveTicket = require("../models/activeModel");
 const ticketController = {
   submitTicket: async (req, res) => {
     try {
@@ -54,7 +55,7 @@ const ticketController = {
         paymentMethod,
       });
       res.status(200).json({
-        message: "Ticket Created",
+        message: `Ticket Created ${ticket._id}`,
       });
     } catch (error) {
       res.status(400).json({
@@ -139,21 +140,18 @@ const ticketController = {
   // },
   getActiveTickets: async (req, res) => {
     try {
-      const tickets = await Ticket.find({
-        pending: false,
-      });
-      res.status(200).json(tickets);
+    const activeTickets = await ActiveTicket.find();
+    res.status(200).json(activeTickets);
     } catch (error) {
       res.status(400).json({
-        error: error.message,
+        error: error.message
       });
     }
   },
+  
   getPendingTickets: async (req, res) => {
     try {
-      const tickets = await Ticket.find({
-        pending: true,
-      });
+      const tickets = await Ticket.find();
       res.status(200).json(tickets);
     } catch (error) {
       res.status(400).json({
@@ -201,24 +199,54 @@ const ticketController = {
   },
   updateStatus: async (req, res) => {
     try {
-      const { id, pending } = req.body;
-
+      const { id, carton, maskingTape, bags, rolls, bundles, pallets, drums } = req.body;
+      if (!id || carton === undefined || maskingTape === undefined || bags === undefined || rolls === undefined || bundles === undefined || pallets === undefined || drums === undefined) {
+        return res.status(400).json({ "id:":id, carton, maskingTape, bags, rolls, bundles, pallets, drums});
+      }
+      
       const ticket = await Ticket.findById(id);
       if (!ticket) {
-        throw Error("Ticket not Found");
+        return res.status(404).json({ error: "Ticket not Found" });
       }
-      await ticket.updateOne({
-        pending,
+      if (ticket.carton === carton && ticket.maskingTape === maskingTape && ticket.bags === bags && ticket.rolls === rolls && ticket.bundles === bundles && ticket.pallets === pallets && ticket.drums === drums) {
+        await ticket.deleteOne();
+      } else {
+        const activeTicket = await ActiveTicket.create({
+        shipperName: ticket.shipperName,
+        shipperPhoneNumber: ticket.shipperPhoneNumber,
+        shipperContactName: ticket.shipperContactName,
+        consigneeName: ticket.consigneeName,
+        consigneePhoneNumber: ticket.consigneePhoneNumber,
+        consigneeContactName: ticket.consigneeContactName,
+        totalAmount: ticket.totalAmount,
+        carton,
+        maskingTape,
+        bags,
+        rolls,
+        bundles,
+        pallets,
+        drums,
+        other: ticket.other,
+        description: ticket.description,
+        paymentMethod: ticket.paymentMethod,
       });
-      res.status(200).json({
-        message: "Status Updated",
-      });
+      console.log(activeTicket);
+      updatedCarton = ticket.carton - carton;
+      updatedMaskingTape = ticket.maskingTape - maskingTape;
+      updatedBags = ticket.bags - bags;
+      updatedRolls = ticket.rolls - rolls;
+      updatedBundles = ticket.bundles - bundles;
+      updatedPallets = ticket.pallets - pallets;
+      updatedDrums = ticket.drums - drums;
+      await ticket.updateOne({ carton: updatedCarton, maskingTape: updatedMaskingTape, bags: updatedBags, rolls: updatedRolls, bundles: updatedBundles, pallets: updatedPallets, drums: updatedDrums });
+      activeTicket.save();
+      res.status(200).json({ message: "Ticket updated and active ticket created successfully", activeTicket });
+    }  
     } catch (error) {
-      res.status(400).json({
-        error: error.message,
-      });
+      res.status(500).json({ error: error.message });
     }
-  },
+  }
+  
 };
 
 module.exports = ticketController;

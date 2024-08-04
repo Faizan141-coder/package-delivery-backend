@@ -27,7 +27,7 @@ const TicketSchema = new mongoose.Schema(
 
         paymentMethod : {type:String,enum:["COD","Cash","Shipper's A/C","Consignee's A/C"]},
 
-        pending:{type:Boolean, default:true}
+      //  pending:{type:Boolean, default:true}
         
     }
 )

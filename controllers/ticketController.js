@@ -1,5 +1,6 @@
 const Ticket = require("../models/ticketModel");
 const ActiveTicket = require("../models/activeModel");
+const { response } = require("express");
 const ticketController = {
   submitTicket: async (req, res) => {
     try {
@@ -7,13 +8,13 @@ const ticketController = {
         shipperName,
         shipperPhoneNumber,
         shipperContactName,
-
+  
         consigneeName,
         consigneePhoneNumber,
         consigneeContactName,
-
+  
         totalAmount,
-
+  
         carton,
         maskingTape,
         bags,
@@ -21,48 +22,65 @@ const ticketController = {
         bundles,
         pallets,
         drums,
-
+  
         other,
-
+  
         description,
-
+  
         paymentMethod,
       } = req.body;
-
-      const ticket = await Ticket.create({
-        shipperName,
-        shipperPhoneNumber,
-        shipperContactName,
-
-        consigneeName,
-        consigneePhoneNumber,
-        consigneeContactName,
-
-        totalAmount,
-
-        carton,
-        maskingTape,
-        bags,
-        rolls,
-        bundles,
-        pallets,
-        drums,
-
-        other,
-
-        description,
-
-        paymentMethod,
-      });
-      res.status(200).json({
-        message: `Ticket Created ${ticket._id}`,
-      });
+  
+      const existingName = await Ticket.findOne({ shipperName });
+  
+      if (existingName) {
+        const updatedFields = {
+          carton : existingName.carton + carton,
+          maskingTape : existingName.maskingTape + maskingTape,
+          bags : existingName.bags + bags,
+          rolls : existingName.rolls + rolls,
+          bundles : existingName.bundles + bundles,
+          pallets : existingName.pallets + pallets,
+          drums : existingName.drums + drums,
+        };
+        await existingName.updateOne(updatedFields);
+        res.status(200).json({ "message": "Ticket Updated on existing Name" });
+      } else {
+        const ticket = await Ticket.create({
+          shipperName,
+          shipperPhoneNumber,
+          shipperContactName,
+  
+          consigneeName,
+          consigneePhoneNumber,
+          consigneeContactName,
+  
+          totalAmount,
+  
+          carton,
+          maskingTape,
+          bags,
+          rolls,
+          bundles,
+          pallets,
+          drums,
+  
+          other,
+  
+          description,
+  
+          paymentMethod,
+        });
+        res.status(200).json({
+          message: `Ticket Created ${ticket._id}`,
+        });
+      }
     } catch (error) {
       res.status(400).json({
         error: error.message,
       });
     }
   },
+  
   getTicketById: async (req, res) => {
     try {
       const { id } = req.params;

@@ -200,52 +200,65 @@ const ticketController = {
   updateStatus: async (req, res) => {
     try {
       const { id, carton, maskingTape, bags, rolls, bundles, pallets, drums } = req.body;
-      if (!id || carton === undefined || maskingTape === undefined || bags === undefined || rolls === undefined || bundles === undefined || pallets === undefined || drums === undefined) {
-        return res.status(400).json({ "id:":id, carton, maskingTape, bags, rolls, bundles, pallets, drums});
+      
+      // Check for missing fields in the request body
+      if (!id || [carton, maskingTape, bags, rolls, bundles, pallets, drums].some(value => value === undefined)) {
+        return res.status(400).json({ id, carton, maskingTape, bags, rolls, bundles, pallets, drums });
       }
       
       const ticket = await Ticket.findById(id);
+      
+      // Check if the ticket exists
       if (!ticket) {
         return res.status(404).json({ error: "Ticket not Found" });
       }
+      
+      // Function to create an active ticket
+      const createActiveTicket = async (ticketDetails) => {
+        return await ActiveTicket.create({
+          shipperName: ticket.shipperName,
+          shipperPhoneNumber: ticket.shipperPhoneNumber,
+          shipperContactName: ticket.shipperContactName,
+          consigneeName: ticket.consigneeName,
+          consigneePhoneNumber: ticket.consigneePhoneNumber,
+          consigneeContactName: ticket.consigneeContactName,
+          totalAmount: ticket.totalAmount,
+          ...ticketDetails,
+          other: ticket.other,
+          description: ticket.description,
+          paymentMethod: ticket.paymentMethod,
+        });
+      };
+  
+      let activeTicket;
+  
       if (ticket.carton === carton && ticket.maskingTape === maskingTape && ticket.bags === bags && ticket.rolls === rolls && ticket.bundles === bundles && ticket.pallets === pallets && ticket.drums === drums) {
+        // Create active ticket and delete the original ticket
+        activeTicket = await createActiveTicket({ carton, maskingTape, bags, rolls, bundles, pallets, drums });
         await ticket.deleteOne();
+        res.status(200).json({ message: "Ticket deleted and active ticket created successfully", activeTicket });
       } else {
-        const activeTicket = await ActiveTicket.create({
-        shipperName: ticket.shipperName,
-        shipperPhoneNumber: ticket.shipperPhoneNumber,
-        shipperContactName: ticket.shipperContactName,
-        consigneeName: ticket.consigneeName,
-        consigneePhoneNumber: ticket.consigneePhoneNumber,
-        consigneeContactName: ticket.consigneeContactName,
-        totalAmount: ticket.totalAmount,
-        carton,
-        maskingTape,
-        bags,
-        rolls,
-        bundles,
-        pallets,
-        drums,
-        other: ticket.other,
-        description: ticket.description,
-        paymentMethod: ticket.paymentMethod,
-      });
-      console.log(activeTicket);
-      updatedCarton = ticket.carton - carton;
-      updatedMaskingTape = ticket.maskingTape - maskingTape;
-      updatedBags = ticket.bags - bags;
-      updatedRolls = ticket.rolls - rolls;
-      updatedBundles = ticket.bundles - bundles;
-      updatedPallets = ticket.pallets - pallets;
-      updatedDrums = ticket.drums - drums;
-      await ticket.updateOne({ carton: updatedCarton, maskingTape: updatedMaskingTape, bags: updatedBags, rolls: updatedRolls, bundles: updatedBundles, pallets: updatedPallets, drums: updatedDrums });
-      activeTicket.save();
-      res.status(200).json({ message: "Ticket updated and active ticket created successfully", activeTicket });
-    }  
+        // Create active ticket and update the original ticket
+        activeTicket = await createActiveTicket({ carton, maskingTape, bags, rolls, bundles, pallets, drums });
+  
+        const updatedFields = {
+          carton: ticket.carton - carton,
+          maskingTape: ticket.maskingTape - maskingTape,
+          bags: ticket.bags - bags,
+          rolls: ticket.rolls - rolls,
+          bundles: ticket.bundles - bundles,
+          pallets: ticket.pallets - pallets,
+          drums: ticket.drums - drums,
+        };
+        
+        await ticket.updateOne(updatedFields);
+        res.status(200).json({ message: "Ticket updated and active ticket created successfully", activeTicket });
+      }
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }
+  
   
 };
 

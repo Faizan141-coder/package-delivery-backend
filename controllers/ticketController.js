@@ -34,6 +34,7 @@ const ticketController = {
   
       if (existingName) {
         const updatedFields = {
+          totalAmount : existingName.totalAmount + totalAmount,
           carton : existingName.carton + carton,
           maskingTape : existingName.maskingTape + maskingTape,
           bags : existingName.bags + bags,
